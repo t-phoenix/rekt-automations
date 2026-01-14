@@ -1,0 +1,19 @@
+{
+    "brand_name": "REKT",
+    "primary_color": "#ff0033",
+    "secondary_color": "#ffc400",
+    "color_black": "#0c0c0c",
+    "color_white": "#ffffff",
+    "font_family": "Impact",
+    "logo_path": "./logo.png",
+    "brand_ambassador_image_path": null,
+    "text_style_rules": {
+        "uppercase": true,
+        "font_weight": "bold",
+        "letter_spacing": "normal",
+        "font_style": "comic sans",
+        "stroke_color": "#000000",
+        "stroke_width": 2
+    },
+    "visual_tone": "edgy"
+}
