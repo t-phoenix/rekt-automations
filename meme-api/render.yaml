@@ -1,0 +1,29 @@
+# Render.com deployment configuration
+services:
+  - type: web
+    name: rekt-meme-api
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m uvicorn app:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: API_HOST
+        value: 0.0.0.0
+      - key: API_PORT
+        fromValue: PORT
+      - key: GOOGLE_API_KEY
+        sync: false  # Set this in Render dashboard
+      - key: CORS_ORIGINS
+        value: https://your-frontend.vercel.app,http://localhost:3000
+      - key: MAX_FILE_SIZE_MB
+        value: 10
+      - key: BRAND_CONFIG_PATH
+        value: ../content-meme-automation/brand_identity/brand_config.json
+      - key: MEME_TEMPLATES_PATH
+        value: ../content-meme-automation/rekt_meme_templates
+      - key: LOG_LEVEL
+        value: INFO

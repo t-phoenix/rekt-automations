@@ -28,11 +28,11 @@ def generate_meme_text(
     Returns:
         MemeText with top_text, bottom_text, and metadata
     """
-    llm = get_llm(\"content_generation\")
+    llm = get_llm("content_generation")
     
     # Extract brand context from nested structure
-    communication_style = business_context.get(\"communication_style\", {})
-    variation_seeds = business_context.get(\"content_variation_seeds\", {})
+    communication_style = business_context.get("communication_style", {})
+    variation_seeds = business_context.get("content_variation_seeds", {})
     
     # Select random humor pattern for variation
     humor_patterns = [
@@ -47,8 +47,8 @@ def generate_meme_text(
     selected_humor_pattern = random.choice(humor_patterns)
     
     # Select random perspective for variation
-    perspectives = variation_seeds.get(\"perspectives\", [\"community cheerleader\"])
-    selected_perspective = random.choice(perspectives) if perspectives else \"community cheerleader\"
+    perspectives = variation_seeds.get("perspectives", ["community cheerleader"])
+    selected_perspective = random.choice(perspectives) if perspectives else "community cheerleader"
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are a VIRAL meme creator with deep understanding of Web3 culture and human humor.
