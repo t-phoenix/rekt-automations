@@ -119,6 +119,16 @@ class ImageAnalysis(TypedDict, total=False):
     humor_opportunities: List[str]
 
 
+class MemeTextOption(TypedDict, total=False):
+    """Single meme text option."""
+    top_text: str
+    bottom_text: str
+    virality_score: float
+    image_coherence_score: float
+    humor_pattern_used: str
+    character_counts: Dict[str, int]
+
+
 class TextSelection(TypedDict, total=False):
     """Output from Node 4: Text Selection (Top 3)."""
     top_3_options: List[MemeTextOption]  # Top 3 selected options with ranking_score
@@ -130,16 +140,6 @@ class BrandedTemplate(TypedDict, total=False):
     branded_template_image_path: str
     modifications_applied: Dict[str, bool]
     preview_metadata: Dict[str, str]
-
-
-class MemeTextOption(TypedDict, total=False):
-    """Single meme text option."""
-    top_text: str
-    bottom_text: str
-    virality_score: float
-    image_coherence_score: float
-    humor_pattern_used: str
-    character_counts: Dict[str, int]
 
 
 class MemeText(TypedDict, total=False):
