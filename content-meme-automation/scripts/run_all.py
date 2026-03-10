@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.panel import Panel
 
 # Add project root to path (parent of src/)
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.flows import TextContentFlow, MemeGenerationFlow, AnimationFlow
 from src.config import FlowConfig

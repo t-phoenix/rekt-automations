@@ -14,7 +14,8 @@ class FlowBase(ABC):
         self,
         run_id: Optional[str] = None,
         config: Optional[FlowConfig] = None,
-        override_string: Optional[str] = None
+        override_string: Optional[str] = None,
+        override_dict: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize flow.
@@ -23,13 +24,19 @@ class FlowBase(ABC):
             run_id: Existing run ID to continue, or None to create new
             config: FlowConfig instance or None to create from defaults
             override_string: Configuration override string
+            override_dict: Dictionary containing configuration overrides (weights, custom parameters)
         """
         # Initialize config
         if config is None:
-            config = FlowConfig(override_string=override_string)
-        elif override_string:
+            config = FlowConfig(override_string=override_string, override_dict=override_dict)
+        elif override_string or override_dict:
             # Apply overrides to existing config
-            config._apply_overrides(override_string)
+            if override_string:
+                config._apply_overrides(override_string)
+            if override_dict:
+                for k, v in override_dict.items():
+                    if v is not None:
+                        config.set(k, v)
         
         self.config = config
         

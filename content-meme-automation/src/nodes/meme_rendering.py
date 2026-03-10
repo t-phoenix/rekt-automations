@@ -143,6 +143,53 @@ def render_meme_with_text(
     return image
 
 
+def apply_rekt_border(image: Image.Image, brand_config: Dict[str, Any]) -> Image.Image:
+    """Apply the Rekt CEO specific border pattern."""
+    # Convert to RGBA for transparency handling
+    img = image.convert("RGBA")
+    
+    # Border configurations
+    radius = 16
+    top_border = 6
+    left_border = 6
+    right_border = 6
+    bottom_border = 40
+    
+    # Use primary_color or fallback to red/yellow
+    border_color_hex = brand_config.get("primary_color", "#ff0033")
+    try:
+        border_color_rgb = hex_to_rgb(border_color_hex)
+        border_color = (*border_color_rgb, 255)
+    except Exception:
+        border_color = (255, 0, 51, 255) # default red
+    
+    # Create mask for inner image rounded corners
+    inner_mask = Image.new("L", img.size, 0)
+    inner_draw = ImageDraw.Draw(inner_mask)
+    inner_draw.rounded_rectangle((0, 0, img.size[0], img.size[1]), radius=radius, fill=255)
+    
+    img_rounded = img.copy()
+    img_rounded.putalpha(inner_mask)
+    
+    # Create new canvas
+    new_width = img.width + left_border + right_border
+    new_height = img.height + top_border + bottom_border
+    
+    # Create outer shape with rounded corners
+    outer_canvas = Image.new("RGBA", (new_width, new_height), (0, 0, 0, 0))
+    outer_draw = ImageDraw.Draw(outer_canvas)
+    outer_draw.rounded_rectangle((0, 0, new_width, new_height), radius=radius, fill=border_color)
+    
+    # Paste inner image onto outer canvas using inner image's alpha as mask
+    outer_canvas.paste(img_rounded, (left_border, top_border), img_rounded)
+    
+    # Convert to RGB with white background
+    background = Image.new("RGB", outer_canvas.size, (255, 255, 255))
+    background.paste(outer_canvas, (0, 0), outer_canvas)
+    
+    return background
+
+
 def meme_rendering_node(state: GraphState) -> GraphState:
     """
     Node 8: Render final meme with text overlay.
@@ -193,6 +240,9 @@ def meme_rendering_node(state: GraphState) -> GraphState:
         brand_config,
         template_metadata
     )
+    
+    # Apply custom Rekt CEO border pattern
+    final_image = apply_rekt_border(final_image, brand_config)
     
     # Save final meme
     output_dir = Path(state["config"].get("output_path", "./output"))

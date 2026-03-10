@@ -19,3 +19,5 @@ pydantic>=2.0.0
 # CLI
 click>=8.1.0
 rich>=13.7.0
+
+supabase==2.28.0

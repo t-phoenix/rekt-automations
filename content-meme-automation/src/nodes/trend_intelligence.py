@@ -6,20 +6,21 @@ import json
 from langchain_core.prompts import ChatPromptTemplate
 
 from ..utils import get_llm, load_cached_with_expiry, save_cache_with_timestamp
-from ..graph.state import GraphState, TrendIntelligence, TrendingTopic, BusinessContext
+from ..graph.state import GraphState, TrendIntelligence, TrendingTopic
+from ..rag import query_brand_context
 
 
 CACHE_DIR = Path(".cache")
 CACHE_DIR.mkdir(exist_ok=True)
 
 
-def fetch_trending_topics_with_llm(business_context: BusinessContext) -> List[TrendingTopic]:
+def fetch_trending_topics_with_llm(brand_context: str) -> List[TrendingTopic]:
     """
     Use LLM to generate trending topics (fallback when APIs unavailable).
-    
+
     Args:
-        business_context: Business context for relevance filtering
-        
+        brand_context: Brand context string from RAG
+
     Returns:
         List of trending topics
     """
@@ -72,15 +73,10 @@ Generate Web3 trending topics as JSON array:""")
     ])
     
     chain = prompt | llm
-    # Extract from nested business context
-    brand_identity = business_context.get("brand_identity", {})
-    communication_style = business_context.get("communication_style", {})
-    strategic_messaging = business_context.get("strategic_messaging", {})
-    
     response = chain.invoke({
-        "brand_summary": brand_identity.get("core_narrative", "")[:500],  # Truncate for API limits
-        "tone": ", ".join(communication_style.get("tone_descriptors", [])),
-        "key_messages": ", ".join(strategic_messaging.get("key_messages", []))
+        "brand_summary": brand_context[:800],  # Truncate for API limits
+        "tone": "edgy, crypto-native, meme-first, irreverent",  # Fallback, RAG context has detail
+        "key_messages": "crypto culture, meme content, Web3 community"
     })
     
     content = response.content.strip()
@@ -141,14 +137,17 @@ def trend_intelligence_node(state: GraphState) -> GraphState:
             state["trend_intelligence"] = TrendIntelligence(**cached)
             return state
     
-    # Fetch fresh trends
+    # Fetch fresh trends using RAG brand context
     print("🌐 Fetching trending topics...")
-    
-    business_context = state.get("business_context", {})
-    
+    print("🧠 Querying brand context from RAG...")
+    brand_context = query_brand_context(
+        "brand identity audience crypto web3 meme content relevance topics",
+        k=4,
+    )
+
     # TODO: Add Twitter scraping, Reddit API, Perplexity API
     # For now, using LLM to generate contextual trends
-    trending_topics = fetch_trending_topics_with_llm(business_context)
+    trending_topics = fetch_trending_topics_with_llm(brand_context)
     
     # Select top topic by relevance
     selected_topic = max(trending_topics, key=lambda t: t.get("relevance_score", 0))

@@ -9,7 +9,8 @@ Usage:
     # Run specific flow
     python main.py --flow text
     python main.py --flow meme --run-id run_20260113_070000_a1b2
-    python main.py --flow animation --run-id run_20260113_070000_a1b2
+    python main.py --flow competition_research
+    python main.py --flow kol_research
     
     # With overrides
     python main.py --flow text --override "platforms=twitter,tone=edgy"
@@ -25,7 +26,7 @@ from rich.panel import Panel
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src.flows import TextContentFlow, MemeGenerationFlow, AnimationFlow
+from src.flows import TextContentFlow, MemeGenerationFlow, AnimationFlow, TrendResearchFlow, CompetitionResearchFlow, KOLResearchFlow
 
 console = Console()
 
@@ -33,7 +34,7 @@ console = Console()
 @click.command()
 @click.option(
     '--flow',
-    type=click.Choice(['text', 'meme', 'animation', 'all']),
+    type=click.Choice(['text', 'meme', 'animation', 'trends', 'competition_research', 'kol_research', 'all']),
     default='all',
     help='Which flow to run (default: all flows sequentially)'
 )
@@ -85,6 +86,12 @@ def main(flow, run_id, override, skip_animation):
             _run_meme_flow(run_id, override)
         elif flow == 'animation':
             _run_animation_flow(run_id, override)
+        elif flow == 'trends':
+            _run_trends_flow(override)
+        elif flow == 'competition_research':
+            _run_competition_flow(override)
+        elif flow == 'kol_research':
+            _run_kol_flow(override)
         else:  # all
             _run_all_flows(override)
             
@@ -139,6 +146,41 @@ def _run_animation_flow(run_id: str = None, override: str = None):
         console.print(f"\n[green]✓ Animation flow completed[/green]\n")
     else:
         console.print(f"\n[yellow]⚠️  Animation skipped[/yellow]\n")
+
+
+def _run_trends_flow(override: str = None):
+    """Run the standalone trend research flow."""
+    console.print("\n[bold]Running: Trend Research Flow[/bold]\n")
+
+    flow = TrendResearchFlow(override_string=override)
+    output = flow.run()
+
+    report = output.get("trend_report", {})
+    console.print(f"\n[green]✓ Trends flow completed[/green] (Run ID: {flow.run_id})")
+    console.print(f"  Top topic: [cyan]{report.get('top_topic', 'N/A')}[/cyan] (score: {report.get('top_score', 0):.2f})")
+    console.print(f"  Output: [dim]output/runs/{flow.run_id}/trends/[/dim]\n")
+
+
+def _run_competition_flow(override: str = None):
+    """Run the standalone competition research flow."""
+    console.print("\n[bold]Running: Competition Research Flow[/bold]\n")
+
+    flow = CompetitionResearchFlow(override_string=override)
+    output = flow.run()
+
+    console.print(f"\n[green]✓ Competition Research flow completed[/green] (Run ID: {flow.run_id})")
+    console.print(f"  Output: [dim]output/runs/{flow.run_id}/competition_research/[/dim]\n")
+
+
+def _run_kol_flow(override: str = None):
+    """Run the standalone KOL research flow."""
+    console.print("\n[bold]Running: KOL Research Flow[/bold]\n")
+
+    flow = KOLResearchFlow(override_string=override)
+    output = flow.run()
+
+    console.print(f"\n[green]✓ KOL Research flow completed[/green] (Run ID: {flow.run_id})")
+    console.print(f"  Output: [dim]output/runs/{flow.run_id}/kol_research/[/dim]\n")
 
 
 def _run_all_flows(override: str = None):

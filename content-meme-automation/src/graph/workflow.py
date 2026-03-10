@@ -8,7 +8,6 @@ from langgraph.graph import StateGraph, END
 
 from .state import GraphState
 from ..nodes import (
-    business_context_node,
     trend_intelligence_node,
     content_curation_node,
     sentiment_analysis_node,
@@ -53,11 +52,9 @@ def create_workflow() -> StateGraph:
     Returns:
         Compiled StateGraph
     """
-    # Initialize graph
     workflow = StateGraph(GraphState)
-    
-    # Add all nodes
-    workflow.add_node("business_context", business_context_node)
+
+    # Add all nodes (business_context node removed — RAG replaces it)
     workflow.add_node("trend_intelligence", trend_intelligence_node)
     workflow.add_node("content_curation", content_curation_node)
     workflow.add_node("sentiment_analysis", sentiment_analysis_node)
@@ -66,34 +63,18 @@ def create_workflow() -> StateGraph:
     workflow.add_node("text_generation", text_generation_node)
     workflow.add_node("meme_rendering", meme_rendering_node)
     workflow.add_node("meme_animation", meme_animation_node)
-    
+
     # Set entry point
-    workflow.set_entry_point("business_context")
-    
+    workflow.set_entry_point("trend_intelligence")
+
     # Define edges
-    # Business context → trend intelligence
-    workflow.add_edge("business_context", "trend_intelligence")
-    
-    # Trend intelligence → content curation
     workflow.add_edge("trend_intelligence", "content_curation")
-    
-    # Content curation → sentiment analysis
     workflow.add_edge("content_curation", "sentiment_analysis")
-    
-    # Sentiment analysis → template selection
     workflow.add_edge("sentiment_analysis", "template_selection")
-    
-    # Template selection → brand blending
     workflow.add_edge("template_selection", "brand_blending")
-    
-    # Brand blending → text generation
-    # (text generation also needs sentiment analysis output)
     workflow.add_edge("brand_blending", "text_generation")
-    
-    # Text generation → meme rendering
     workflow.add_edge("text_generation", "meme_rendering")
-    
-    # Conditional: meme rendering → animation or END
+
     workflow.add_conditional_edges(
         "meme_rendering",
         should_animate,
@@ -102,11 +83,8 @@ def create_workflow() -> StateGraph:
             "skip": END
         }
     )
-    
-    # Animation → END
     workflow.add_edge("meme_animation", END)
-    
-    # Compile
+
     return workflow.compile()
 
 
@@ -234,13 +212,7 @@ def print_workflow_summary(state: GraphState) -> None:
     """Print a summary of the workflow results."""
     print("\n📊 WORKFLOW SUMMARY:")
     print("-" * 60)
-    
-    # Business Context
-    if "business_context" in state:
-        print(f"\n✓ Business Context:")
-        print(f"  Tone: {state['business_context'].get('tone', 'N/A')}")
-        print(f"  Messages: {len(state['business_context'].get('key_messages', []))}")
-    
+
     # Trends
     if "trend_intelligence" in state:
         topic = state['trend_intelligence'].get('selected_topic', {})

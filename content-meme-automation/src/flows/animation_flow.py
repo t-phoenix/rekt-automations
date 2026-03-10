@@ -1,8 +1,11 @@
 """Flow 3: Animation Generation."""
 import json
 from datetime import datetime
+import traceback
 from typing import Dict, Any, Optional
 from pathlib import Path
+
+from ..utils.supabase_client import get_supabase_client, upload_to_storage
 
 from langgraph.graph import StateGraph, END
 
@@ -18,7 +21,8 @@ class AnimationFlow(FlowBase):
         self,
         run_id: Optional[str] = None,
         config: Optional[Any] = None,
-        override_string: Optional[str] = None
+        override_string: Optional[str] = None,
+        override_dict: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize AnimationFlow.
@@ -27,8 +31,9 @@ class AnimationFlow(FlowBase):
             run_id: Existing run ID to continue, or None to create new
             config: FlowConfig instance or None to create from defaults
             override_string: Configuration override string
+            override_dict: Configuration override dictionary
         """
-        super().__init__(run_id=run_id, config=config, override_string=override_string)
+        super().__init__(run_id=run_id, config=config, override_string=override_string, override_dict=override_dict)
         self.flow_name = "animation"
     
     def _create_workflow(self) -> StateGraph:
@@ -133,6 +138,37 @@ class AnimationFlow(FlowBase):
             print("✅ ANIMATION FLOW COMPLETED")
             print("=" * 60)
             self._print_summary(output_data)
+            
+            # Save to Supabase
+            try:
+                if self.run_id and "animated_meme" in output_data:
+                    video_path_str = output_data["animated_meme"].get("animated_meme_video_path")
+                    if video_path_str:
+                        print(f"  💾 Saving to Supabase...")
+                        sb = get_supabase_client()
+                        
+                        # 1. Update Automation Run
+                        sb.table("rekt_meme_automation_runs").upsert({
+                            "id": self.run_id,
+                            "status": "animation_complete",
+                            "configuration": self.config.to_dict()
+                        }).execute()
+                        
+                        # 2. Upload Video to Storage
+                        storage_path = f"runs/{self.run_id}/videos/{Path(video_path_str).name}"
+                        uploaded = upload_to_storage(sb, "rekt_media", video_path_str, storage_path, "video/mp4")
+                        
+                        if uploaded:
+                            # 3. Update existing Meme Generation Record
+                            sb.table("rekt_meme_generations").update({
+                                "video_storage_path": storage_path
+                            }).eq("run_id", self.run_id).execute()
+                            
+                            print(f"  ✅ Saved Animation Outputs to Supabase")
+                        
+            except Exception as e:
+                print(f"  ⚠️  Failed to save to Supabase: {e}")
+                traceback.print_exc()
             
             return output_data
             

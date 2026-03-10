@@ -1,6 +1,6 @@
 # Scripts Directory
 
-This directory contains shell scripts for running the automation flows.
+This directory contains the internal automation flow Python scripts that provide an easy way to run different parts of the automation pipeline.
 
 ## Available Scripts
 
@@ -8,51 +8,63 @@ This directory contains shell scripts for running the automation flows.
 
 | Script | Description | Usage |
 |--------|-------------|-------|
-| `run_all.sh` | Run all 3 flows sequentially | `./scripts/run_all.sh [--override "..."]` |
-| `run_text.sh` | Run text content generation only | `./scripts/run_text.sh [--override "..."]` |
-| `run_meme.sh` | Run meme generation only | `./scripts/run_meme.sh --run-id <ID> [--override "..."]` |
-| `run_animation.sh` | Run animation generation only | `./scripts/run_animation.sh --run-id <ID>` |
+| `run_all.py` | Run all 3 flows sequentially | `python scripts/run_all.py [--override "..."]` |
+| `run_text.py` | Run text content generation only | `python scripts/run_text.py [--override "..."]` |
+| `run_meme.py` | Run meme generation only | `python scripts/run_meme.py --run-id <ID> [--override "..."]` |
+| `run_animation.py` | Run animation generation only | `python scripts/run_animation.py --run-id <ID>` |
+| `run_trends.py` | Run trends generation | `python scripts/run_trends.py` |
 
-### Legacy Script
+### Utility Scripts
 
 | Script | Description | Usage |
 |--------|-------------|-------|
-| `run.sh` | Legacy main.py runner | `./scripts/run.sh [--flow text]` |
+| `ingest_brand_knowledge.py` | Rebuild internal RAG index | `python scripts/ingest_brand_knowledge.py` |
 
 ## Quick Start
 
+Before running any script, ensure the virtual environment is activated:
+```bash
+source venv/bin/activate
+```
+
 **Run everything:**
 ```bash
-./scripts/run_all.sh
+python scripts/run_all.py
 ```
 
 **Run individual flows:**
 ```bash
 # Step 1: Generate content
-./scripts/run_text.sh
+python scripts/run_text.py
 
 # Step 2: Generate meme (use the Run ID from step 1)
-./scripts/run_meme.sh --run-id run_20260113_072000_a1b2
+python scripts/run_meme.py --run-id run_20260113_072000_a1b2
 
 # Step 3: Animate (use the same Run ID)
-./scripts/run_animation.sh --run-id run_20260113_072000_a1b2
+python scripts/run_animation.py --run-id run_20260113_072000_a1b2
 ```
 
-## Features
+## Supabase Configuration
 
-✅ Automatic venv activation  
-✅ Uses `python3` command  
-✅ Passes through all arguments  
-✅ Proper error handling  
+This project can automatically save completed runs and media to Supabase. To set it up:
+
+1. **Create the Schema:** Log into your Supabase project, go to the SQL Editor, and execute the queries inside [`scripts/supabase_schema.sql`](supabase_schema.sql). This will build the needed tables and storage bucket (`rekt_media`).
+2. **Environment Variables:** Provide `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in your `.env`.
+3. **Verify Connection:**
+   Run the test script to ensure your database and storage are reachable.
+
+```bash
+python scripts/check_supabase.py
+```
 
 ## Configuration Overrides
 
-All scripts support `--override` flag:
+Most scripts support the `--override` flag for inline parameter overrides:
 
 ```bash
-./scripts/run_all.sh --override "platforms=twitter,tone=edgy"
-./scripts/run_text.sh --override "platforms=twitter"
-./scripts/run_meme.sh --run-id <ID> --override "style=bold"
+python scripts/run_all.py --override "platforms=twitter,tone=edgy"
+python scripts/run_text.py --override "platforms=twitter"
+python scripts/run_meme.py --run-id <ID> --override "style=bold"
 ```
 
 See [../QUICKSTART.md](../QUICKSTART.md) for more examples.

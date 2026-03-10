@@ -11,7 +11,8 @@ class FlowConfig:
     def __init__(
         self,
         base_config: Optional[Dict[str, Any]] = None,
-        override_string: Optional[str] = None
+        override_string: Optional[str] = None,
+        override_dict: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize FlowConfig.
@@ -19,6 +20,7 @@ class FlowConfig:
         Args:
             base_config: Base configuration dictionary
             override_string: Override string in format "key1=value1,key2=value2"
+            override_dict: Dictionary containing configuration overrides. Takes precedence over string overrides.
         """
         # Load environment variables
         load_dotenv()
@@ -26,9 +28,15 @@ class FlowConfig:
         # Start with base config or defaults
         self.config = base_config or self._load_default_config()
         
-        # Apply overrides if provided
+        # Apply string overrides if provided
         if override_string:
             self._apply_overrides(override_string)
+            
+        # Apply dictionary overrides if provided. Dictionary offsets take precedence.
+        if override_dict:
+            for k, v in override_dict.items():
+                if v is not None:
+                    self.config[k] = v
     
     def _load_default_config(self) -> Dict[str, Any]:
         """

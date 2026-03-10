@@ -4,14 +4,10 @@
 
 ### Option 1: Run Everything at Once (Simplest)
 
-**Using Shell Script (Recommended - uses venv):**
+**Note:** Make sure to use `python` and activate venv first:
 ```bash
-./scripts/run_all.sh
-```
-
-**Or directly:**
-```bash
-python3 src/scripts/run_all_flows.py
+source venv/bin/activate
+python scripts/run_all.py
 ```
 
 This runs all 3 flows sequentially:
@@ -25,29 +21,23 @@ This runs all 3 flows sequentially:
 
 ### Option 2: Run Individual Flows (Maximum Control)
 
-**Using Shell Scripts (Recommended - uses venv):**
+**Note:** Make sure to use `python` and activate venv first:
 
 #### Step 1: Generate Text Content
 ```bash
-./scripts/run_text.sh
+source venv/bin/activate
+python scripts/run_text.py
 # Outputs: Run ID (e.g., run_20260113_072000_a1b2)
 ```
 
 #### Step 2: Generate Meme (using Run ID from Step 1)
 ```bash
-./scripts/run_meme.sh --run-id run_20260113_072000_a1b2
+python scripts/run_meme.py --run-id run_20260113_072000_a1b2
 ```
 
 #### Step 3: Animate Meme (using same Run ID)
 ```bash
-./scripts/run_animation.sh --run-id run_20260113_072000_a1b2
-```
-
-**Or run Python scripts directly (in src/scripts/):**
-```bash
-python3 src/scripts/run_text_flow.py
-python3 src/scripts/run_meme_flow.py --run-id run_20260113_072000_a1b2
-python3 src/scripts/run_animation_flow.py --run-id run_20260113_072000_a1b2
+python scripts/run_animation.py --run-id run_20260113_072000_a1b2
 ```
 
 ---
@@ -71,30 +61,30 @@ python3 main.py --flow animation --run-id run_20260113_072000_a1b2
 
 ### Use Case 1: Generate Only Text Content
 ```bash
-./scripts/run_text.sh --override "platforms=twitter"
+python scripts/run_text.py --override "platforms=twitter"
 ```
 
 ### Use Case 2: Skip Animation (Faster)
 ```bash
-./scripts/run_all.sh --skip-animation
+python scripts/run_all.py --skip-animation
 ```
 
 ### Use Case 3: Custom Configuration
 ```bash
-./scripts/run_text.sh --override "platforms=twitter,tone=professional"
-./scripts/run_meme.sh --run-id <RUN_ID> --override "style=minimal"
+python scripts/run_text.py --override "platforms=twitter,tone=professional"
+python scripts/run_meme.py --run-id <RUN_ID> --override "style=minimal"
 ```
 
 ### Use Case 4: Generate Multiple Memes from Same Content
 ```bash
 # Step 1: Generate content once
-./scripts/run_text.sh
+python scripts/run_text.py
 # Save this Run ID!
 
 # Step 2: Generate different memes using the same content
-./scripts/run_meme.sh --run-id <RUN_ID>
-./scripts/run_meme.sh --run-id <RUN_ID> --override "style=bold"
-./scripts/run_meme.sh --run-id <RUN_ID> --override "template=stonks"
+python scripts/run_meme.py --run-id <RUN_ID>
+python scripts/run_meme.py --run-id <RUN_ID> --override "style=bold"
+python scripts/run_meme.py --run-id <RUN_ID> --override "template=stonks"
 ```
 
 ---
@@ -154,18 +144,14 @@ Override any configuration parameter using the `--override` flag:
 
 ### Examples:
 ```bash
-# Single override (using shell scripts)
-./scripts/run_text.sh --override "platforms=twitter"
+# Single override
+python scripts/run_text.py --override "platforms=twitter"
 
 # Multiple overrides
-./scripts/run_all.sh --override "platforms=twitter,tone=edgy,skip_animation=true"
+python scripts/run_all.py --override "platforms=twitter,tone=edgy,skip_animation=true"
 
 # Flow-specific override
-./scripts/run_meme.sh --run-id <ID> --override "humor_type=sarcastic"
-
-# Or with python3 directly (remember to activate venv first)
-source venv/bin/activate
-python3 src/scripts/run_text_flow.py --override "platforms=twitter"
+python scripts/run_meme.py --run-id <ID> --override "humor_type=sarcastic"
 ```
 
 ---
@@ -245,11 +231,14 @@ python3 src/scripts/run_text_flow.py --override "platforms=twitter"
 
 ## 🎨 Next Steps
 
-1. **Customize your brand:** Edit `brand_identity/brand_config.json`
-2. **Add business context:** Add files to `business_documents/`
-3. **Add meme templates:** Add images to `rekt_meme_templates/`
-4. **Schedule runs:** Set up cron jobs to run flows automatically
-5. **Integrate with frontend:** Use the JSON outputs for web UI
+1. **Configure Supabase (Optional but Recommended):** 
+   - Set up your Supabase project using the SQL schema found in `scripts/supabase_schema.sql`
+   - Add your `SUPABASE_URL` and `SUPABASE_SERVICE_KEY`  to your `.env` file to enable database and bucket tracking!
+2. **Customize your brand:** Edit `brand_identity/brand_config.json`
+3. **Add business context:** Add files to `business_documents/`
+4. **Add meme templates:** Add images to `rekt_meme_templates/`
+5. **Schedule runs:** Set up cron jobs to run flows automatically
+6. **Integrate with frontend:** Use the Supabase databases to populate your web UI.
 
 ---
 

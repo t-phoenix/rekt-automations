@@ -1,15 +1,17 @@
 """Flow 1: Text Content Generation."""
 import json
 from datetime import datetime
+import traceback
 from typing import Dict, Any, Optional
 from pathlib import Path
+
+from ..utils.supabase_client import get_supabase_client
 
 from langgraph.graph import StateGraph, END
 
 from .flow_base import FlowBase
 from ..graph.state import GraphState
 from ..nodes import (
-    business_context_node,
     trend_intelligence_node,
     content_curation_node,
 )
@@ -22,7 +24,8 @@ class TextContentFlow(FlowBase):
         self,
         run_id: Optional[str] = None,
         config: Optional[Any] = None,
-        override_string: Optional[str] = None
+        override_string: Optional[str] = None,
+        override_dict: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize TextContentFlow.
@@ -31,8 +34,9 @@ class TextContentFlow(FlowBase):
             run_id: Existing run ID to continue, or None to create new
             config: FlowConfig instance or None to create from defaults
             override_string: Configuration override string
+            override_dict: Configuration override dictionary
         """
-        super().__init__(run_id=run_id, config=config, override_string=override_string)
+        super().__init__(run_id=run_id, config=config, override_string=override_string, override_dict=override_dict)
         self.flow_name = "text"
     
     def _create_workflow(self) -> StateGraph:
@@ -43,20 +47,18 @@ class TextContentFlow(FlowBase):
             Compiled StateGraph
         """
         workflow = StateGraph(GraphState)
-        
+
         # Add nodes
-        workflow.add_node("business_context", business_context_node)
         workflow.add_node("trend_intelligence", trend_intelligence_node)
         workflow.add_node("content_curation", content_curation_node)
-        
-        # Set entry point to business context
-        workflow.set_entry_point("business_context")
-        
+
+        # Set entry point directly to trend intelligence (RAG replaces business_context node)
+        workflow.set_entry_point("trend_intelligence")
+
         # Define edges
-        workflow.add_edge("business_context", "trend_intelligence")
         workflow.add_edge("trend_intelligence", "content_curation")
         workflow.add_edge("content_curation", END)
-        
+
         return workflow.compile()
     
     def run(self) -> Dict[str, Any]:
@@ -96,7 +98,6 @@ class TextContentFlow(FlowBase):
             
             # Extract outputs
             output_data = {
-                "business_context": final_state.get("business_context", {}),
                 "trend_intelligence": final_state.get("trend_intelligence", {}),
                 "platform_content": final_state.get("platform_content", {}),
                 "execution_metadata": final_state.get("execution_metadata", {}),
@@ -119,6 +120,39 @@ class TextContentFlow(FlowBase):
             print("✅ TEXT CONTENT FLOW COMPLETED")
             print("=" * 60)
             self._print_summary(output_data)
+            
+            # Save to Supabase
+            try:
+                # Get trends and content gracefully
+                ti = output_data.get("trend_intelligence", {})
+                pc = output_data.get("platform_content", {})
+                
+                # Check if we should save (we need at least a run ID)
+                if self.run_id:
+                    print(f"  💾 Saving to Supabase...")
+                    sb = get_supabase_client()
+                    
+                    # 1. Upsert Automation Run
+                    sb.table("rekt_meme_automation_runs").upsert({
+                        "id": self.run_id,
+                        "status": "text_complete",
+                        "configuration": self.config.to_dict()
+                    }).execute()
+                    
+                    # 2. Insert Content Generations
+                    platforms = list(pc.keys()) if pc else []
+                    sb.table("rekt_meme_content_generations").insert({
+                        "run_id": self.run_id,
+                        "platforms": platforms,
+                        "trends_data": ti,
+                        "business_context": final_state.get("business_context", {}),
+                        "generated_text": pc,
+                    }).execute()
+                    print(f"  ✅ Saved Text Outputs to Supabase")
+                    
+            except Exception as e:
+                print(f"  ⚠️  Failed to save to Supabase: {e}")
+                traceback.print_exc()
             
             return output_data
             
@@ -160,13 +194,6 @@ class TextContentFlow(FlowBase):
             with open(trends_file, 'w', encoding='utf-8') as f:
                 json.dump(output_data["trend_intelligence"], f, indent=2, ensure_ascii=False)
             print(f"  📊 Saved trends: {trends_file}")
-        
-        # Save business context
-        if "business_context" in output_data:
-            context_file = content_dir / "business_context.json"
-            with open(context_file, 'w', encoding='utf-8') as f:
-                json.dump(output_data["business_context"], f, indent=2, ensure_ascii=False)
-            print(f"  📚 Saved business context: {context_file}")
     
     def _print_summary(self, output_data: Dict[str, Any]) -> None:
         """
@@ -177,13 +204,6 @@ class TextContentFlow(FlowBase):
         """
         print(f"\n📊 SUMMARY:")
         print("-" * 60)
-        
-        # Business Context
-        if "business_context" in output_data:
-            context = output_data["business_context"]
-            print(f"\n✓ Business Context:")
-            print(f"  Tone: {context.get('tone', 'N/A')}")
-            print(f"  Messages: {len(context.get('key_messages', []))}")
         
         # Trends
         if "trend_intelligence" in output_data:

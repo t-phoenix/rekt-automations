@@ -51,14 +51,9 @@ class ContentVariationSeeds(TypedDict, total=False):
     emotional_ranges: List[str]
 
 
-class BusinessContext(TypedDict, total=False):
-    """Output from Node 1: Business Context Ingestion (Enhanced)."""
-    brand_identity: BrandIdentity
-    communication_style: CommunicationStyle
-    strategic_messaging: StrategicMessaging
-    audience_intelligence: AudienceIntelligence
-    brand_guardrails: BrandGuardrails
-    content_variation_seeds: ContentVariationSeeds
+# NOTE: BusinessContext TypedDicts below are kept as reference types
+# but are no longer stored in GraphState. Brand knowledge is now
+# retrieved on-demand via src/rag/retriever.query_brand_context().
 
 
 class TrendingTopic(TypedDict, total=False):
@@ -160,9 +155,8 @@ class GraphState(TypedDict, total=False):
     """
     # Configuration inputs
     config: Dict[str, Any]
-    
-    # Node outputs
-    business_context: Optional[BusinessContext]
+
+    # Node outputs (business_context removed — use src.rag.query_brand_context() instead)
     trend_intelligence: Optional[TrendIntelligence]
     platform_content: Optional[PlatformContent]
     content_analysis: Optional[ContentAnalysis]

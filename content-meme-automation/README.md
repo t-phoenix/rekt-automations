@@ -107,6 +107,13 @@ Configure your brand:
 }
 ```
 
+#### `brand_knowledge/` (RAG System)
+Add your brand voice, tone, and visual guidelines here in Markdown or text files.
+**Important:** After adding or updating files, you must rebuild the RAG index:
+```bash
+python scripts/ingest_brand_knowledge.py
+```
+
 #### `rekt_meme_templates/`
 Organize templates by category:
 ```
@@ -143,7 +150,24 @@ rekt_meme_templates/
 ./scripts/run_animation.sh --run-id run_20260113_072000_a1b2
 ```
 
-#### Option C: Use Main CLI
+#### Option C: Use via API Server (New! 🚀)
+Start the FastAPI server to trigger workflows or query generated data programmatically:
+
+```bash
+# Make sure your virtual environment is active
+source venv/bin/activate
+
+# Install the updated requirements (if you haven't yet)
+pip install -r requirements.txt
+
+# Start the uvicorn server with hot reload
+uvicorn src.api.main:app --reload
+```
+
+Once running, explore and trigger endpoints dynamically using the **Interactive API Docs**:
+👉 **[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)**
+
+#### Option D: Use Main CLI
 ```bash
 # Activate venv first
 source venv/bin/activate
@@ -494,3 +518,38 @@ For issues or questions:
 ---
 
 **Built with ❤️ for the REKT community**
+
+## API Backend Integration
+
+The project now includes a FastAPI backend to trigger workflows programmatically and fetch results from Supabase dynamically.
+
+### Run the API Server
+
+```bash
+uvicorn src.api.main:app --reload
+```
+
+The API will be available at `http://127.0.0.1:8000`.
+
+### Documentation
+
+FastAPI provides an interactive Swagger UI for testing the endpoints. You can access it at:
+[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+### Core Endpoints
+
+1. **Trigger Workflows (Async)**
+   - `POST /api/workflows/trend-research`
+   - `POST /api/workflows/kol-research`
+   - `POST /api/workflows/competition-research`
+   - `POST /api/workflows/text-content`
+   - `POST /api/workflows/meme-generation`
+   - `POST /api/workflows/twitter-engagement`
+   - `POST /api/workflows/animation`
+
+   _Note:_ Endpoints take specific parameters to override defaults configured in your workflow files.
+
+2. **Read Automation Data (Sync)**
+   - `GET /api/data/runs` - List recent automation runs.
+   - `GET /api/data/{table_name}` - Fetch records dynamically from output tables (`rekt_meme_trend_research`, `rekt_kol_research`, etc.). Supports query parameters `limit`, `start_date`, `end_date`, and `latest`.
+

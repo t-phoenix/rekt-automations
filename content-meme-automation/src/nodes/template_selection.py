@@ -134,6 +134,12 @@ def template_selection_node(state: GraphState) -> GraphState:
     content_analysis = state.get("content_analysis", {})
     suggested_categories = content_analysis.get("suggested_template_categories", [])
     
+    # Override with manual template preference from API
+    template_preference = state["config"].get("template_preference")
+    if template_preference:
+        suggested_categories = [template_preference] + [c for c in suggested_categories if c != template_preference]
+        print(f"  🔧 Injected manual template preference: {template_preference}")
+    
     print(f"📁 Scanning templates from: {templates_path}")
     templates_by_category = find_all_templates(templates_path)
     

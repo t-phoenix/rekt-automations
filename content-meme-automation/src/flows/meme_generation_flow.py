@@ -1,8 +1,11 @@
 """Flow 2: Meme Generation."""
 import json
 from datetime import datetime
+import traceback
 from typing import Dict, Any, Optional
 from pathlib import Path
+
+from ..utils.supabase_client import get_supabase_client, upload_to_storage
 
 from langgraph.graph import StateGraph, END
 
@@ -25,7 +28,8 @@ class MemeGenerationFlow(FlowBase):
         self,
         run_id: Optional[str] = None,
         config: Optional[Any] = None,
-        override_string: Optional[str] = None
+        override_string: Optional[str] = None,
+        override_dict: Optional[Dict[str, Any]] = None
     ):
         """
         Initialize MemeGenerationFlow.
@@ -34,8 +38,9 @@ class MemeGenerationFlow(FlowBase):
             run_id: Existing run ID to continue, or None to create new
             config: FlowConfig instance or None to create from defaults
             override_string: Configuration override string
+            override_dict: Configuration override dictionary
         """
-        super().__init__(run_id=run_id, config=config, override_string=override_string)
+        super().__init__(run_id=run_id, config=config, override_string=override_string, override_dict=override_dict)
         self.flow_name = "meme"
     
     def _create_workflow(self) -> StateGraph:
@@ -80,8 +85,32 @@ class MemeGenerationFlow(FlowBase):
         # Validate configuration
         self.validate_config()
         
-        # Load previous text flow output if available
-        text_output = self.load_previous_flow_output("text")
+        # Check for direct text input override
+        config_dict = self.config.to_dict() if hasattr(self.config, "to_dict") else getattr(self.config, "__dict__", {})
+        user_text = config_dict.get("user_text")
+        
+        if user_text:
+            platform = config_dict.get("platform", "twitter")
+            print(f"📥 Using direct user text input for platform: {platform}")
+            text_output = {
+                "trend_intelligence": {
+                    "selected_topic": {
+                        "topic": "Direct User Input",
+                        "sentiment": "neutral"
+                    }
+                },
+                "platform_content": {
+                    platform: {
+                        "post": user_text,
+                        "caption": user_text,
+                        "content": user_text
+                    }
+                }
+            }
+        else:
+            # Load previous text flow output if available
+            text_output = self.load_previous_flow_output("text")
+            
         if not text_output:
             print("⚠️  Warning: No previous text flow output found")
             print("    Meme generation will use minimal context\n")
@@ -102,7 +131,6 @@ class MemeGenerationFlow(FlowBase):
         
         # Add text flow outputs to state if available
         if text_output:
-            initial_state["business_context"] = text_output.get("business_context", {})
             initial_state["trend_intelligence"] = text_output.get("trend_intelligence", {})
             initial_state["platform_content"] = text_output.get("platform_content", {})
         
@@ -142,6 +170,46 @@ class MemeGenerationFlow(FlowBase):
             print("✅ MEME GENERATION FLOW COMPLETED")
             print("=" * 60)
             self._print_summary(output_data)
+            
+            # Save to Supabase
+            try:
+                if self.run_id and "final_meme" in output_data:
+                    meme_path_str = output_data["final_meme"].get("final_meme_image_path")
+                    if meme_path_str:
+                        print(f"  💾 Saving to Supabase...")
+                        sb = get_supabase_client()
+                        
+                        # 1. Update Automation Run
+                        sb.table("rekt_meme_automation_runs").upsert({
+                            "id": self.run_id,
+                            "status": "meme_complete",
+                            "configuration": self.config.to_dict()
+                        }).execute()
+                        
+                        # 2. Upload Image to Storage
+                        storage_path = f"runs/{self.run_id}/memes/{Path(meme_path_str).name}"
+                        uploaded = upload_to_storage(sb, "rekt_media", meme_path_str, storage_path, "image/png")
+                        
+                        image_storage_path = None
+                        if uploaded:
+                            image_storage_path = sb.storage.from_("rekt_media").get_public_url(storage_path)
+                        
+                        # 3. Insert Meme Generation Record
+                        analysis = output_data.get("content_analysis", {})
+                        template = output_data.get("template_selection", {}).get("template_metadata", {})
+                        
+                        sb.table("rekt_meme_generations").insert({
+                            "run_id": self.run_id,
+                            "sentiment": analysis.get("dominant_emotion"),
+                            "template_used": template.get("template_name", "unknown"),
+                            "meme_text": output_data.get("meme_text", {}),
+                            "image_storage_path": image_storage_path
+                        }).execute()
+                        print(f"  ✅ Saved Meme Outputs to Supabase")
+                        
+            except Exception as e:
+                print(f"  ⚠️  Failed to save to Supabase: {e}")
+                traceback.print_exc()
             
             return output_data
             
