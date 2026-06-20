@@ -1,6 +1,5 @@
 """Models package for the Meme API."""
 
-from .requests import MemeGenerateRequest
 from .responses import (
     MemeTextResponse,
     MemeOption,
@@ -11,7 +10,6 @@ from .responses import (
 )
 
 __all__ = [
-    "MemeGenerateRequest",
     "MemeTextResponse",
     "MemeOption",
     "ErrorResponse",

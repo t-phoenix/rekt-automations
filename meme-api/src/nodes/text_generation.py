@@ -1,11 +1,10 @@
 """Node 7: Meme Text Generation (Image-Aware)."""
 import json
-import random
-from typing import Dict, Any
+from typing import Dict
 from langchain_core.prompts import ChatPromptTemplate
 
 from ..utils import get_llm_from_state
-from ..graph.state import GraphState, MemeText
+from ..graph.state import GraphState
 
 
 def generate_meme_text(

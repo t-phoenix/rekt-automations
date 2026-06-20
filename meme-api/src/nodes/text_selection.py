@@ -1,7 +1,6 @@
 """Node 4: Text Selection (NEW)."""
-import json
-from typing import Dict, Any, List
-from ..graph.state import GraphState, MemeTextOption
+from typing import Dict, List
+from ..graph.state import GraphState
 
 
 def calculate_text_input_alignment(
@@ -46,7 +45,6 @@ def calculate_text_input_alignment(
 def rank_text_options(
     options: List[Dict],
     content_analysis: Dict,
-    image_analysis: Dict
 ) -> List[Dict]:
     """
     Rank all text options using 60/40 weighting.
@@ -57,8 +55,6 @@ def rank_text_options(
     Args:
         options: List of 10 meme text options from Node 3
         content_analysis: Sentiment analysis from Node 1
-        image_analysis: Image analysis from Node 2
-        
     Returns:
         List of options sorted by ranking_score (highest first)
     """
@@ -115,7 +111,6 @@ def text_selection_node(state: GraphState) -> GraphState:
     
     meme_text = state.get("meme_text", {})
     content_analysis = state.get("content_analysis", {})
-    image_analysis = state.get("image_analysis", {})
     
     options = meme_text.get("options", [])
     
@@ -127,7 +122,7 @@ def text_selection_node(state: GraphState) -> GraphState:
     print(f"   40% weight on image coherence")
     
     # Rank all options
-    ranked_options = rank_text_options(options, content_analysis, image_analysis)
+    ranked_options = rank_text_options(options, content_analysis)
     
     # Select top 3
     top_3 = ranked_options[:3]

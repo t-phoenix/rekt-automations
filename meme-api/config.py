@@ -1,8 +1,6 @@
 """Configuration management for the Meme API."""
 import os
-from pathlib import Path
 from typing import Optional
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import load_dotenv
 
@@ -35,9 +33,6 @@ class Settings(BaseSettings):
     openrouter_api_key: Optional[str] = None
     default_llm: Optional[str] = None
     default_vision_llm: Optional[str] = None
-    
-    # Paths
-    brand_config_path: Optional[str] = os.getenv("BRAND_CONFIG_PATH")
     
     # Logging
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
@@ -104,5 +99,3 @@ MINIMAL_BUSINESS_CONTEXT = {
 }
 
 
-# Minimal default platforms if not specified
-DEFAULT_PLATFORMS = ["twitter"]

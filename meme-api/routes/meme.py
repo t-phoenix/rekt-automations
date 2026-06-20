@@ -3,7 +3,6 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Request
-from fastapi.responses import JSONResponse
 
 from models import (
     MemeTextResponse,

@@ -1,7 +1,5 @@
 """Meme generation service that wraps the LangGraph flow."""
-import os
 import tempfile
-import json
 from pathlib import Path
 from typing import Dict, Any, Optional
 from datetime import datetime
@@ -15,7 +13,7 @@ from src.nodes import (
 )
 from src.utils.llm_utils import any_llm_configured, get_llm
 from src.utils.llm_registry import LLMSelection, selection_to_metadata
-from config import settings, MINIMAL_BUSINESS_CONTEXT
+from config import MINIMAL_BUSINESS_CONTEXT
 
 
 class MemeService:
