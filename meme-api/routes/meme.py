@@ -1,5 +1,4 @@
 """Meme generation API routes."""
-import os
 import tempfile
 from pathlib import Path
 from typing import Optional
@@ -9,10 +8,12 @@ from fastapi.responses import JSONResponse
 from models import (
     MemeTextResponse,
     ErrorResponse,
-    HealthResponse
+    HealthResponse,
+    LLMListResponse,
 )
 from services import meme_service
 from config import settings
+from src.utils.llm_registry import list_available_presets, resolve_default_preset_id
 
 # Import limiter from app (will be accessed via request.app.state.limiter)
 from slowapi import Limiter
@@ -28,11 +29,17 @@ router = APIRouter(prefix="/api/meme", tags=["meme"])
     response_model=MemeTextResponse,
     responses={
         400: {"model": ErrorResponse},
+        402: {"description": "Payment required (x402). Retry with PAYMENT-SIGNATURE header."},
         429: {"model": ErrorResponse},
         500: {"model": ErrorResponse}
     },
     summary="Generate meme text",
-    description="Generate top 3 meme text options. Rate limited to 1 request per 2 minutes per IP."
+    description=(
+        "Generate top 3 meme text options. "
+        "When x402 is enabled, returns 402 until USDC payment is submitted via PAYMENT-SIGNATURE. "
+        "Admins can bypass payment with X-Admin-Key or Authorization: Bearer. "
+        "Rate limited to 1 request per 2 minutes per IP."
+    )
 )
 @limiter.limit("1/2minutes")
 async def generate_meme(
@@ -41,6 +48,17 @@ async def generate_meme(
     is_twitter_post: bool = Form(False, description="Toggle: True if input is a full Twitter post, False if short topic"),
     tone: Optional[str] = Form(None, description="Tone (edgy, professional, casual)"),
     humor_type: Optional[str] = Form(None, description="Humor type (sarcastic, witty, ironic)"),
+    llm: Optional[str] = Form(
+        None,
+        description=(
+            "LLM preset: gemini-flash (recommended), gemini-flash-lite, groq-llama-70b, "
+            "groq-llama-8b, deepseek, gpt-4o-mini, gpt-4o, or openrouter"
+        ),
+    ),
+    llm_model: Optional[str] = Form(
+        None,
+        description="Required when llm=openrouter (e.g. google/gemini-2.5-flash)",
+    ),
     template_image: UploadFile = File(..., description="Meme template image (REQUIRED)")
 ):
     """Generate meme text from topic or Twitter post."""
@@ -84,7 +102,9 @@ async def generate_meme(
             is_twitter_post=is_twitter_post,
             template_image_path=temp_file_path,
             tone=tone,
-            humor_type=humor_type
+            humor_type=humor_type,
+            llm=llm,
+            llm_model=llm_model,
         )
         
         # Build response with top 3 options
@@ -115,6 +135,23 @@ async def generate_meme(
 
 
 @router.get(
+    "/llms",
+    response_model=LLMListResponse,
+    summary="List available LLM presets",
+    description="Returns LLM options available on this server (based on configured API keys).",
+)
+async def list_llms():
+    """List LLM presets the caller can pass as the `llm` form field."""
+    presets = list_available_presets()
+    default = None
+    try:
+        default = resolve_default_preset_id()
+    except ValueError:
+        pass
+    return LLMListResponse(presets=presets, default=default)
+
+
+@router.get(
     "/health",
     response_model=HealthResponse,
     summary="Health check",
@@ -122,8 +159,15 @@ async def generate_meme(
 )
 async def health_check():
     """Health check endpoint."""
+    default_llm = None
+    if settings.has_llm_key:
+        try:
+            default_llm = resolve_default_preset_id()
+        except ValueError:
+            pass
     return HealthResponse(
         status="healthy",
         version="1.0.0",
-        llm_available=settings.has_llm_key
+        llm_available=settings.has_llm_key,
+        default_llm=default_llm,
     )

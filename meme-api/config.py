@@ -27,17 +27,33 @@ class Settings(BaseSettings):
     max_file_size_mb: int = 10
     allowed_image_formats: str = "image/jpeg,image/png,image/webp"
     
-    # LLM API Keys
-    google_api_key: Optional[str] = os.getenv("GOOGLE_API_KEY")
-    openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
+    # LLM API Keys (configure one or more — users pick per request)
+    google_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    groq_api_key: Optional[str] = None
+    deepseek_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
+    default_llm: Optional[str] = None
+    default_vision_llm: Optional[str] = None
     
     # Paths
     brand_config_path: Optional[str] = os.getenv("BRAND_CONFIG_PATH")
     
     # Logging
     log_level: str = os.getenv("LOG_LEVEL", "INFO")
-    
-    
+
+    # x402 payment settings (disabled by default for local development)
+    x402_enabled: bool = False
+    x402_price: str = "$0.05"
+    x402_evm_pay_to: Optional[str] = None
+    x402_svm_pay_to: Optional[str] = None
+    x402_evm_network: str = "eip155:84532"  # Base Sepolia testnet
+    x402_svm_network: str = "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"  # Solana devnet
+    x402_facilitator_url: str = "https://x402.org/facilitator"
+
+    # Admin bypass: set a long random secret; send via X-Admin-Key or Authorization: Bearer
+    admin_api_key: Optional[str] = None
+
     # Computed properties
     @property
     def cors_origins_list(self) -> list[str]:
@@ -56,8 +72,14 @@ class Settings(BaseSettings):
     
     @property
     def has_llm_key(self) -> bool:
-        """Check if at least one LLM API key is configured."""
-        return bool(self.google_api_key or self.openai_api_key)
+        """Check if at least one LLM provider API key is configured."""
+        return bool(
+            self.google_api_key
+            or self.openai_api_key
+            or self.groq_api_key
+            or self.deepseek_api_key
+            or self.openrouter_api_key
+        )
 
 
 # Global settings instance

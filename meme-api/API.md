@@ -2,14 +2,25 @@
 
 Complete API documentation for the Meme Generation service.
 
+**See also:** [API_KEYS.md](./API_KEYS.md) · [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md) · [README.md](./README.md)
+
 ## Base URL
 
 - **Local**: `http://localhost:8001`
 - **Production**: `https://your-app.onrender.com`
 
-## Authentication
+## Authentication & Payments
 
-Currently no authentication required. Consider adding API keys for production.
+When `X402_ENABLED=true`, `POST /api/meme/generate` requires an x402 USDC payment per call. Unpaid requests receive **402 Payment Required** with payment instructions in the `PAYMENT-REQUIRED` header. Clients retry the same request with a `PAYMENT-SIGNATURE` header (use [agentcash](https://agentcash.dev) or the x402 Python/JS client SDKs).
+
+**Admin bypass (free):** send a secret key via either header:
+
+- `X-Admin-Key: <ADMIN_API_KEY>`
+- `Authorization: Bearer <ADMIN_API_KEY>`
+
+Set `ADMIN_API_KEY` to a long random value in your environment. Never expose it in client-side code.
+
+When `X402_ENABLED=false` (default for local dev), no payment or admin key is required.
 
 ---
 

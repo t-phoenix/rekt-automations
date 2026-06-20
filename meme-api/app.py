@@ -9,6 +9,7 @@ from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from config import settings
+from middleware import setup_x402_middleware
 from routes import meme_router
 
 # Configure logging
@@ -41,7 +42,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["PAYMENT-REQUIRED", "PAYMENT-RESPONSE"],
 )
+
+# x402 paywall (optional; skipped for valid admin credentials)
+setup_x402_middleware(app)
 
 # Include routers
 app.include_router(meme_router)
@@ -50,12 +55,20 @@ app.include_router(meme_router)
 @app.get("/", tags=["root"])
 async def root():
     """Root endpoint."""
-    return {
+    info = {
         "message": "Meme Generation API",
         "version": "1.0.0",
         "docs": "/docs",
-        "health": "/api/meme/health"
+        "health": "/api/meme/health",
     }
+    if settings.x402_enabled:
+        info["payment"] = {
+            "protocol": "x402",
+            "price_per_call": settings.x402_price,
+            "protected_routes": ["POST /api/meme/generate"],
+            "admin_bypass": "X-Admin-Key or Authorization: Bearer <ADMIN_API_KEY>",
+        }
+    return info
 
 
 @app.get("/health", tags=["root"])

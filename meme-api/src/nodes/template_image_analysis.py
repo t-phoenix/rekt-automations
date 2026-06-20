@@ -6,7 +6,7 @@ from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.messages import HumanMessage
 
-from ..utils import get_llm
+from ..utils import get_llm_from_state
 from ..graph.state import GraphState, ImageAnalysis
 
 
@@ -24,7 +24,7 @@ def encode_image_to_base64(image_path: str) -> str:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
 
-def analyze_template_image(template_path: str) -> ImageAnalysis:
+def analyze_template_image(template_path: str, state: GraphState) -> ImageAnalysis:
     """
     Analyze meme template image to understand visual context.
     
@@ -34,7 +34,7 @@ def analyze_template_image(template_path: str) -> ImageAnalysis:
     Returns:
         ImageAnalysis with visual understanding
     """
-    llm = get_llm("analysis")  # Will use Gemini vision model
+    llm = get_llm_from_state(state, "analysis", require_vision=True)
     
     # Encode image
     base64_image = encode_image_to_base64(template_path)
@@ -117,7 +117,7 @@ def template_image_analysis_node(state: GraphState) -> GraphState:
     print(f"📸 Analyzing image: {Path(template_path).name}")
     
     # Analyze image
-    analysis = analyze_template_image(template_path)
+    analysis = analyze_template_image(template_path, state)
     
     print(f"✓ Image Analysis Complete:")
     print(f"  - Format: {analysis['meme_format']}")

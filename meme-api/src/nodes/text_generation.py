@@ -4,13 +4,14 @@ import random
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..utils import get_llm
+from ..utils import get_llm_from_state
 from ..graph.state import GraphState, MemeText
 
 
 def generate_meme_text(
     content_analysis: Dict,
     image_analysis: Dict,
+    state: GraphState,
     previous_angles: list = None
 ) -> Dict:
     """
@@ -24,7 +25,7 @@ def generate_meme_text(
     Returns:
         Dict with list of 10 MemeTextOption objects
     """
-    llm = get_llm("content_generation")
+    llm = get_llm_from_state(state, "content_generation")
     
     # Select 10 different humor patterns for maximum diversity
     humor_patterns = [
@@ -158,7 +159,7 @@ def text_generation_node(state: GraphState) -> GraphState:
     
     print(f"🎨 Image Format: {image_analysis.get('meme_format', 'Unknown')}")
     print("✍️  Generating 10 diverse meme text options...")
-    meme_text_data = generate_meme_text(content_analysis, image_analysis, previous_angles)
+    meme_text_data = generate_meme_text(content_analysis, image_analysis, state, previous_angles)
     
     options = meme_text_data.get("options", [])
     print(f"✓ Generated {len(options)} meme text options:")

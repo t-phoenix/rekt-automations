@@ -1,62 +1,103 @@
 # Meme Generation API
 
-Fast and powerful API for generating viral meme text using AI. Built with FastAPI and powered by Google Gemini.
+FastAPI service that generates viral meme text from a topic + template image. Supports **on-demand LLM selection**, **x402 USDC pay-per-call**, and **admin bypass** for internal use.
 
-## 🚀 Quick Start
+## Features
 
-### Local Development
+- **4-node AI pipeline**: sentiment analysis → image analysis → 10 text options → top 3 ranked
+- **Multi-LLM**: users pick model per request (`gemini-flash`, `groq-llama-70b`, `deepseek`, `openrouter`, etc.)
+- **x402 payments**: optional USDC micropayments per call (Base / Solana)
+- **Admin bypass**: free access via server-side API key
+- **Rate limiting**: 1 generate request per 2 minutes per IP
 
-1. **Install dependencies:**
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [API_KEYS.md](./API_KEYS.md) | Step-by-step guide to obtain every API key and wallet address |
+| [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md) | Required frontend changes (LLM picker, x402, admin proxy) |
+| [API.md](./API.md) | Detailed API reference |
+| `/docs` | Interactive Swagger UI (when server is running) |
+
+## Quick Start
+
+### 1. Install
+
 ```bash
 cd meme-api
 python3 -m venv venv
-(rm -rf venv) ## To remove virtual environment
-lsof -ti:8001 | xargs kill ## To kill process running on port 8001
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+source venv/bin/activate   # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-2. **Configure environment:**
+### 2. Configure
+
 ```bash
 cp .env.example .env
-# Edit .env and add your GOOGLE_API_KEY
 ```
 
-3. **Run the server:**
+At minimum, set one LLM provider key (see [API_KEYS.md](./API_KEYS.md)):
+
+```bash
+GOOGLE_API_KEY=your_key          # recommended — enables gemini-flash
+DEFAULT_LLM=gemini-flash
+```
+
+For local dev, leave payments off:
+
+```bash
+X402_ENABLED=false
+```
+
+### 3. Run
+
 ```bash
 python app.py
-# Or with uvicorn directly:
+# or
 uvicorn app:app --reload --port 8001
 ```
 
-4. **Test the API:**
-```bash
-# Visit the interactive docs
-open http://localhost:8001/docs
+Open http://localhost:8001/docs
 
-# Or test with curl
+### 4. Test
+
+```bash
+# List available LLM presets
+curl http://localhost:8001/api/meme/llms
+
+# Generate meme text
 curl -X POST http://localhost:8001/api/meme/generate \
   -F "topic=When you finally understand DeFi" \
+  -F "llm=gemini-flash" \
   -F "template_image=@path/to/template.jpg"
 ```
 
-## 📡 API Endpoints
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/` | API info (+ payment metadata when x402 enabled) |
+| `GET` | `/health` | Simple health check |
+| `GET` | `/api/meme/health` | Service health + LLM availability |
+| `GET` | `/api/meme/llms` | List LLM presets available on this server |
+| `POST` | `/api/meme/generate` | Generate top 3 meme text options |
 
 ### `POST /api/meme/generate`
-Generate top 3 meme text options from topic and template image.
 
-> [!IMPORTANT]
-> **Rate Limited**: 1 request per 2 minutes per IP address
+**Content-Type:** `multipart/form-data`
 
-**Request:**
-- `topic` (string, **required**): Topic text or full Twitter post
-- `is_twitter_post` (boolean, optional): True if input is a full Twitter post, False if short topic (default: false)
-- `tone` (string, optional): Tone (edgy, professional, casual)
-- `humor_type` (string, optional): Humor type (sarcastic, witty, ironic)
-- `template_image` (file, **required**): Meme template image (JPEG, PNG, WebP)
+| Field | Required | Description |
+|-------|----------|-------------|
+| `topic` | Yes | Topic text or full Twitter post |
+| `template_image` | Yes | Meme template (JPEG, PNG, WebP, max 10MB) |
+| `is_twitter_post` | No | `true` if `topic` is a full tweet (default: `false`) |
+| `tone` | No | `edgy`, `professional`, `casual` |
+| `humor_type` | No | `sarcastic`, `witty`, `ironic` |
+| `llm` | No | Preset id — see `GET /api/meme/llms` (default: server `DEFAULT_LLM`) |
+| `llm_model` | No | Required when `llm=openrouter` (e.g. `google/gemini-2.5-flash`) |
 
-**Response:**
-Returns **top 3 ranked options** with detailed scoring:
+**Response (200):**
+
 ```json
 {
   "options": [
@@ -68,24 +109,6 @@ Returns **top 3 ranked options** with detailed scoring:
       "image_coherence_score": 0.92,
       "text_alignment_score": 0.87,
       "humor_pattern_used": "triumphant_flex"
-    },
-    {
-      "top_text": "ME EXPLAINING DEFI",
-      "bottom_text": "TO MY CAT",
-      "ranking_score": 0.84,
-      "virality_score": 0.80,
-      "image_coherence_score": 0.88,
-      "text_alignment_score": 0.82,
-      "humor_pattern_used": "absurdist"
-    },
-    {
-      "top_text": "DEFI BE LIKE",
-      "bottom_text": "IT'S COMPLICATED",
-      "ranking_score": 0.81,
-      "virality_score": 0.78,
-      "image_coherence_score": 0.85,
-      "text_alignment_score": 0.79,
-      "humor_pattern_used": "relatable_struggle"
     }
   ],
   "metadata": {
@@ -93,355 +116,120 @@ Returns **top 3 ranked options** with detailed scoring:
     "humor_type": "witty",
     "meme_format": "top_bottom_classic",
     "total_options_considered": 10,
-    "weighting": "60% text input, 40% image coherence"
+    "weighting": "60% text input, 40% image coherence",
+    "llm": {
+      "preset": "gemini-flash",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "vision_fallback": false
+    }
   }
 }
 ```
 
-**How Selection Works:**
-- **Node 3**: Generates 10 diverse options with different humor patterns
-- **Node 4**: Ranks using 60/40 weighting (60% text input alignment, 40% image coherence)
-- Returns top 3 best-ranked options
+**Other status codes:**
 
----
+| Code | Meaning |
+|------|---------|
+| `402` | Payment required (x402 enabled, no valid `PAYMENT-SIGNATURE`) |
+| `429` | Rate limit exceeded (1 req / 2 min per IP) |
+| `400` | Validation error (missing topic, bad LLM preset, etc.) |
 
-### `GET /api/meme/health`
-Health check endpoint.
+## LLM Presets
 
+Configure provider keys on the server; clients choose per request via the `llm` field.
 
-## 🌐 Deployment
+| Preset | Provider | Best for | Vision |
+|--------|----------|----------|--------|
+| `gemini-flash` | Google | **Recommended default** — cheap, fast, vision | Yes |
+| `gemini-flash-lite` | Google | Highest volume / lowest cost | Yes |
+| `groq-llama-70b` | Groq | Fast creative text | Fallback* |
+| `groq-llama-8b` | Groq | Fastest / cheapest text | Fallback* |
+| `deepseek` | DeepSeek | Strong meme copy | Fallback* |
+| `gpt-4o-mini` | OpenAI | Reliable fallback | Yes |
+| `gpt-4o` | OpenAI | Highest quality | Yes |
+| `openrouter` | OpenRouter | Any model via `llm_model` | Depends |
 
-### Render.com (Recommended)
+\*Text-only presets use `DEFAULT_VISION_LLM` (e.g. `gemini-flash`) for the image analysis step.
 
-1. **Connect your repository** to Render
-2. **Create a new Web Service**
-3. **Use the following settings:**
-   - Environment: Python 3
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `python -m uvicorn app:app --host 0.0.0.0 --port $PORT`
-4. **Set environment variables:**
-   - `GOOGLE_API_KEY`: Your Google AI API key
-   - `CORS_ORIGINS`: Your frontend URL
-5. **Deploy!**
+## x402 Payments
 
-Alternatively, use the included `render.yaml` for automated deployment.
+When `X402_ENABLED=true`, `POST /api/meme/generate` requires a USDC payment per call.
+
+1. Client sends request → server responds **402** with `PAYMENT-REQUIRED` header
+2. Client signs payment and retries with `PAYMENT-SIGNATURE` header
+3. Server verifies via facilitator, runs generation, settles on success
+
+**Admin bypass** (server-side only — never expose in browser):
+
+```
+X-Admin-Key: <ADMIN_API_KEY>
+# or
+Authorization: Bearer <ADMIN_API_KEY>
+```
+
+See [FRONTEND_INTEGRATION.md](./FRONTEND_INTEGRATION.md) for client-side payment flows.
+
+### Production x402 env vars
+
+```bash
+X402_ENABLED=true
+X402_PRICE=$0.05
+X402_EVM_PAY_TO=0xYourWallet
+X402_EVM_NETWORK=eip155:8453              # Base mainnet
+X402_FACILITATOR_URL=https://facilitator.payai.network
+ADMIN_API_KEY=<long-random-secret>
+```
+
+Testnet: `eip155:84532` + `https://x402.org/facilitator`
+
+## Configuration
+
+All settings via environment variables — see `.env.example`.
+
+| Variable | Description |
+|----------|-------------|
+| `GOOGLE_API_KEY`, `GROQ_API_KEY`, etc. | LLM provider keys ([guide](./API_KEYS.md)) |
+| `DEFAULT_LLM` | Default preset when client omits `llm` |
+| `DEFAULT_VISION_LLM` | Vision fallback for text-only presets |
+| `CORS_ORIGINS` | Comma-separated frontend URLs |
+| `X402_*` | Payment settings |
+| `ADMIN_API_KEY` | Admin bypass secret |
+
+## Deployment
+
+### Render.com
+
+Use the included `render.yaml` or:
+
+- **Build:** `pip install -r requirements.txt`
+- **Start:** `python -m uvicorn app:app --host 0.0.0.0 --port $PORT`
+- **Health check:** `/health`
+
+Set secrets in the Render dashboard: LLM keys, `ADMIN_API_KEY`, `X402_EVM_PAY_TO`.
 
 ### Docker
 
 ```bash
-# Build
 docker build -t meme-api .
-
-# Run
-docker run -p 8001:8001 \
-  -e GOOGLE_API_KEY=your_key \
-  -e CORS_ORIGINS=http://localhost:3000 \
-  meme-api
+docker run -p 8001:8001 --env-file .env meme-api
 ```
 
-## 🔧 Configuration
+## Architecture
 
-All configuration is done via environment variables. See `.env.example` for full list.
-
-**Key variables:**
-- `GOOGLE_API_KEY` or `OPENAI_API_KEY` - At least one required
-- `CORS_ORIGINS` - Comma-separated list of allowed frontend URLs
-- `MAX_FILE_SIZE_MB` - Maximum upload file size (default: 10MB)
-
-**Rate Limiting:**
-- **Meme Text Generation** (`/api/meme/generate`): 1 request per 2 minutes per IP
-- Rate limit errors return HTTP 429 (Too Many Requests)
-- Uses `slowapi` for IP-based rate limiting
-
-
-## 🧪 Testing
-
-```bash
-# Install dev dependencies
-pip install pytest pytest-asyncio httpx
-
-# Run tests
-pytest tests/ -v
+```
+POST /api/meme/generate
+        │
+        ▼
+  [x402 middleware] ──402──► client pays & retries
+        │ (or admin bypass)
+        ▼
+  Node 1: Sentiment Analysis     (user's llm preset)
+  Node 2: Template Image Analysis (vision model)
+  Node 3: Text Generation        (10 options)
+  Node 4: Text Selection         (top 3, 60/40 ranking)
 ```
 
-## 🔗 Frontend Integration
-
-### JavaScript/TypeScript Example
-
-```typescript
-async function generateMeme(topic: string, templateFile: File) {
-  const formData = new FormData();
-  formData.append('topic', topic);
-  formData.append('template_image', templateFile);
-  
-  const response = await fetch('https://your-api.onrender.com/api/meme/generate', {
-    method: 'POST',
-    body: formData
-  });
-  
-  const data = await response.json();
-  // Returns top 3 options
-  return data.options.map(option => ({
-    topText: option.top_text,
-    bottomText: option.bottom_text,
-    rankingScore: option.ranking_score
-  }));
-}
-```
-
-### React Example
-
-```typescript
-import { useState } from 'react';
-
-function MemeGenerator() {
-  const [options, setOptions] = useState([]);
-  
-  const handleGenerate = async (topic: string, image: File) => {
-    const formData = new FormData();
-    formData.append('topic', topic);
-    formData.append('template_image', image);
-    
-    const res = await fetch(`${API_URL}/api/meme/generate`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    const data = await res.json();
-    setOptions(data.options); // Array of 3 options
-  };
-  
-  return (
-    // Your UI here - render all 3 options
-  );
-}
-```
-Generate AI-branded meme template by intelligently blending brand elements.
-
-> [!IMPORTANT]
-> **Rate Limited**: 1 request per 3 minutes per IP address (AI image generation costs)
-
-**Request:**
-- `template_image` (file, **required**): Meme template image (JPEG, PNG, WebP)
-- `brand_name` (string, **required**): Brand name (1-50 characters)
-- `primary_color` (string, **required**): Primary brand color in hex format (e.g., `#00D4FF`)
-- `user_prompt` (string, **required**): How to blend brand (10-500 characters, e.g., "make character wear branded hoodie")
-- `secondary_color` (string, optional): Secondary brand color in hex format
-- `logo_image` (file, optional): Brand logo image
-
-**Response:**
-```json
-{
-  "branded_template_base64": "iVBORw0KGgoAAAANSUhEUgA...",
-  "metadata": {
-    "original_size": {"width": 800, "height": 600},
-    "ai_strategy": "smart_integration",
-    "recommended_integration": "apparel_branding",
-    "refined_prompt": "Place MyCrypto logo on character's hoodie chest area, matching #00D4FF blue color",
-    "user_prompt": "make character wear branded hoodie",
-    "brand_colors": {
-      "primary": "#00D4FF",
-      "secondary": "#FF006E"
-    },
-    "processing_time_ms": 8234,
-    "note": "Entire canvas available for meme text - branding is blended into image"
-  }
-}
-```
-
-**AI Workflow:**
-1. **Image Analysis**: Vision LLM analyzes template and identifies placement opportunities (characters, objects, background)
-2. **Prompt Refinement**: Text LLM improves user's prompt for better AI generation (considers text overlay compatibility)
-3. **Image Editing**: OpenAI DALL-E 2 edits the image to integrate branding naturally
-
-**Example cURL:**
-```bash
-curl -X POST http://localhost:8001/api/meme/template/brand \
-  -F "template_image=@meme_template.jpg" \
-  -F "brand_name=MyCrypto" \
-  -F "primary_color=#00D4FF" \
-  -F "secondary_color=#FF006E" \
-  -F "user_prompt=make the character wear a blue hoodie with the brand logo" \
-  -F "logo_image=@logo.png"
-```
-
----
-
-### `GET /api/meme/templates`
-List available meme templates.
-
-### `GET /api/meme/health`
-Health check endpoint.
-
-
-## 🌐 Deployment
-
-### Render.com (Recommended)
-
-1. **Connect your repository** to Render
-2. **Create a new Web Service**
-3. **Use the following settings:**
-   - Environment: Python 3
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `python -m uvicorn app:app --host 0.0.0.0 --port $PORT`
-4. **Set environment variables:**
-   - `GOOGLE_API_KEY`: Your Google AI API key
-   - `CORS_ORIGINS`: Your frontend URL
-5. **Deploy!**
-
-Alternatively, use the included `render.yaml` for automated deployment.
-
-### Docker
-
-```bash
-# Build
-docker build -t meme-api .
-
-# Run
-docker run -p 8001:8001 \
-  -e GOOGLE_API_KEY=your_key \
-  -e CORS_ORIGINS=http://localhost:3000 \
-  meme-api
-```
-
-## 🔧 Configuration
-
-All configuration is done via environment variables. See `.env.example` for full list.
-
-**Key variables:**
-- `GOOGLE_API_KEY` or `OPENAI_API_KEY` - At least one required
-- `CORS_ORIGINS` - Comma-separated list of allowed frontend URLs
-- `MAX_FILE_SIZE_MB` - Maximum upload file size (default: 10MB)
-
-**Rate Limiting:**
-- **Meme Text Generation** (`/api/meme/generate`): 1 request per 2 minutes per IP
-- **Branded Templates** (`/api/meme/template/brand`): 1 request per 3 minutes per IP (AI generation costs)
-- Rate limit errors return HTTP 429 (Too Many Requests)
-- Uses `slowapi` for IP-based rate limiting
-
-
-## 🧪 Testing
-
-```bash
-# Install dev dependencies
-pip install pytest pytest-asyncio httpx
-
-# Run tests
-pytest tests/ -v
-```
-
-## 🔗 Frontend Integration
-
-### JavaScript/TypeScript Example
-
-```typescript
-async function generateMeme(topic: string, templateFile: File) {
-  const formData = new FormData();
-  formData.append('topic', topic);
-  formData.append('template_image', templateFile);
-  
-  const response = await fetch('https://your-api.onrender.com/api/meme/generate', {
-    method: 'POST',
-    body: formData
-  });
-  
-  const data = await response.json();
-  // Returns top 3 options
-  return data.options.map(option => ({
-    topText: option.top_text,
-    bottomText: option.bottom_text,
-    rankingScore: option.ranking_score
-  }));
-}
-```
-
-### React Example
-
-```typescript
-import { useState } from 'react';
-
-function MemeGenerator() {
-  const [options, setOptions] = useState([]);
-  
-  const handleGenerate = async (topic: string, image: File) => {
-    const formData = new FormData();
-    formData.append('topic', topic);
-    formData.append('template_image', image);
-    
-    const res = await fetch(`${API_URL}/api/meme/generate`, {
-      method: 'POST',
-      body: formData
-    });
-    
-    const data = await res.json();
-    setOptions(data.options); // Array of 3 options
-  };
-  
-  return (
-    // Your UI here - render all 3 options
-  );
-}
-```
-
-### Branded Template Example
-
-```typescript
-async function generateBrandedTemplate(
-  templateFile: File,
-  brandName: string,
-  primaryColor: string,
-  userPrompt: string,
-  logoFile?: File
-) {
-  const formData = new FormData();
-  formData.append('template_image', templateFile);
-  formData.append('brand_name', brandName);
-  formData.append('primary_color', primaryColor);
-  formData.append('user_prompt', userPrompt);
-  if (logoFile) {
-    formData.append('logo_image', logoFile);
-  }
-  
-  const response = await fetch(`${API_URL}/api/meme/template/brand`, {
-    method: 'POST',
-    body: formData
-  });
-  
-  const data = await response.json();
-  // Returns base64 encoded branded template
-  return {
-    imageBase64: data.branded_template_base64,
-    aiStrategy: data.metadata.ai_strategy,
-    processingTime: data.metadata.processing_time_ms
-  };
-}
-```
-
-
-## 📚 Documentation
-
-- **Interactive API Docs**: `/docs` (Swagger UI)
-- **Alternative Docs**: `/redoc` (ReDoc)
-- **Detailed API Reference**: See `API.md`
-
-## 🛠️ Architecture
-
-The API wraps the LangGraph meme generation workflow:
-
-1. **Node 1: Sentiment Analysis** - Analyzes user's topic/tweet for emotion and meme angle
-2. **Node 2: Template Image Analysis** - Analyzes the template image for visual context
-3. **Node 3: Text Generation** - Generates 10 diverse meme text options (NO brand context)
-4. **Node 4: Text Selection** - Ranks options using 60/40 weighting and selects top 3
-
-**Key Features:**
-- Pure focus on user input + image (no brand hallucination)
-- 10 different humor patterns for maximum variety
-- Intelligent ranking with transparent scoring
-
-## 📝 License
+## License
 
 MIT
-
-## 🙏 Credits
-
-Built on top of the `content-meme-automation` LangGraph workflow.

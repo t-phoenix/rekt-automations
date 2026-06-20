@@ -27,3 +27,15 @@ services:
         value: ../content-meme-automation/rekt_meme_templates
       - key: LOG_LEVEL
         value: INFO
+      - key: X402_ENABLED
+        value: "false"
+      - key: X402_PRICE
+        value: $0.05
+      - key: X402_EVM_PAY_TO
+        sync: false
+      - key: X402_EVM_NETWORK
+        value: eip155:8453
+      - key: X402_FACILITATOR_URL
+        value: https://facilitator.payai.network
+      - key: ADMIN_API_KEY
+        sync: false

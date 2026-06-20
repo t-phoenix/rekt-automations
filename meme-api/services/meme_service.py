@@ -13,7 +13,8 @@ from src.nodes import (
     text_generation_node,
     text_selection_node
 )
-from src.utils.llm_utils import get_llm
+from src.utils.llm_utils import any_llm_configured, get_llm
+from src.utils.llm_registry import LLMSelection, selection_to_metadata
 from config import settings, MINIMAL_BUSINESS_CONTEXT
 
 
@@ -31,7 +32,9 @@ class MemeService:
         is_twitter_post: bool = False,
         template_image_path: str = None,
         tone: Optional[str] = None,
-        humor_type: Optional[str] = None
+        humor_type: Optional[str] = None,
+        llm: Optional[str] = None,
+        llm_model: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Generate meme text using the simplified workflow.
@@ -42,18 +45,31 @@ class MemeService:
             template_image_path: Path to template image (REQUIRED)
             tone: Optional tone override
             humor_type: Optional humor type override
+            llm: LLM preset id (e.g. gemini-flash, groq-llama-70b, openrouter)
+            llm_model: Custom model id when llm=openrouter or for overrides
             
         Returns:
             Dict with top 3 options and metadata
         """
         try:
             # Verify LLM is available
-            if not settings.has_llm_key:
+            if not any_llm_configured():
                 raise ValueError("No LLM API key configured")
-            
+
+            llm_selection = LLMSelection.from_request(llm, llm_model)
+            preset = None
+            if llm_selection.preset_id != "openrouter":
+                from src.utils.llm_registry import LLM_PRESETS
+                preset = LLM_PRESETS.get(llm_selection.preset_id)
+            vision_fallback = bool(preset and not preset.supports_vision)
+            llm_meta = selection_to_metadata(llm_selection, vision_fallback=vision_fallback)
+
             # Test LLM connection
             try:
-                llm = get_llm()
+                get_llm("general", {
+                    "preset_id": llm_selection.preset_id,
+                    "model": llm_selection.model_override,
+                })
             except Exception as e:
                 raise ValueError(f"Failed to initialize LLM: {e}")
             
@@ -64,7 +80,11 @@ class MemeService:
                 config={
                     "platforms": ["twitter"],
                     "tone": tone or "edgy",
-                    "humor_type": humor_type or "relatable"
+                    "humor_type": humor_type or "relatable",
+                    "llm": {
+                        "preset_id": llm_selection.preset_id,
+                        "model": llm_selection.model_override,
+                    },
                 },
                 execution_metadata={
                     "execution_id": f"api_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
@@ -120,7 +140,8 @@ class MemeService:
                     "humor_type": content_analysis.get("humor_type"),
                     "meme_format": image_analysis.get("meme_format"),
                     "total_options_considered": selection_metadata.get("total_options_considered", 10),
-                    "weighting": selection_metadata.get("weighting", "60% text input, 40% image coherence")
+                    "weighting": selection_metadata.get("weighting", "60% text input, 40% image coherence"),
+                    "llm": llm_meta,
                 }
             }
             

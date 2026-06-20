@@ -1,39 +1,42 @@
 """Utility functions for LLM interactions."""
-import os
-from typing import Literal
+from typing import Any, Literal, Optional
+
+from .llm_registry import (
+    LLMSelection,
+    create_llm,
+    list_available_presets,
+    resolve_default_preset_id,
+)
+
+TaskType = Literal["content_generation", "analysis", "general"]
 
 
-def get_llm(task_type: Literal["content_generation", "analysis", "general"] = "general"):
+def get_llm(
+    task_type: TaskType = "general",
+    llm_config: Optional[dict[str, Any]] = None,
+    *,
+    require_vision: bool = False,
+):
     """
-    Get LLM instance based on task type.
-    
+    Get an LLM instance for a task.
+
     Args:
-        task_type: Type of task - affects temperature and model selection
-        
-    Returns:
-        LLM instance
-        
-    Raises:
-        ValueError: If no API keys are configured
+        task_type: Affects temperature (creative vs analytical).
+        llm_config: Request-scoped selection from state.config["llm"].
+        require_vision: When True, use a vision-capable model (with fallback).
     """
-    # Primary: OpenAI (most compatible with LangChain)
-    if os.getenv("OPENAI_API_KEY"):
-        from langchain_openai import ChatOpenAI
-        if task_type == "content_generation":
-            return ChatOpenAI(model="gpt-4o-mini", temperature=0.8)
-        elif task_type == "analysis":
-            return ChatOpenAI(model="gpt-4o-mini", temperature=0.3)
-        else:
-            return ChatOpenAI(model="gpt-4o-mini")
-    
-    # Fallback: Google Gemini (v2.5-flash via native SDK)
-    elif os.getenv("GOOGLE_API_KEY"):
-        raise NotImplementedError(
-            "Gemini integration has SDK compatibility issues. "
-            "Please set OPENAI_API_KEY for now."
-        )
-    
-    else:
-       raise ValueError(
-            "No LLM API keys found. Please set OPENAI_API_KEY"
-        )
+    selection = LLMSelection.from_request(
+        preset_id=(llm_config or {}).get("preset_id"),
+        model_override=(llm_config or {}).get("model"),
+    )
+    return create_llm(selection, task_type, require_vision=require_vision)
+
+
+def get_llm_from_state(state: dict, task_type: TaskType = "general", *, require_vision: bool = False):
+    """Resolve LLM from graph state config."""
+    llm_config = state.get("config", {}).get("llm")
+    return get_llm(task_type, llm_config, require_vision=require_vision)
+
+
+def any_llm_configured() -> bool:
+    return bool(list_available_presets())

@@ -85,3 +85,23 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="Service status")
     version: str = Field(..., description="API version")
     llm_available: bool = Field(..., description="Whether LLM is available")
+    default_llm: Optional[str] = Field(None, description="Default LLM preset when none is specified")
+
+
+class LLMPresetInfo(BaseModel):
+    """An LLM preset available on this server."""
+
+    id: str
+    label: str
+    provider: str
+    model: Optional[str] = None
+    supports_vision: bool
+    tier: str
+    description: str
+
+
+class LLMListResponse(BaseModel):
+    """Available LLM presets for on-demand selection."""
+
+    presets: list[LLMPresetInfo]
+    default: Optional[str] = Field(None, description="Server default preset id")

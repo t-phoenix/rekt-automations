@@ -5,7 +5,9 @@ from .responses import (
     MemeTextResponse,
     MemeOption,
     ErrorResponse,
-    HealthResponse
+    HealthResponse,
+    LLMListResponse,
+    LLMPresetInfo,
 )
 
 __all__ = [
@@ -13,5 +15,7 @@ __all__ = [
     "MemeTextResponse",
     "MemeOption",
     "ErrorResponse",
-    "HealthResponse"
+    "HealthResponse",
+    "LLMListResponse",
+    "LLMPresetInfo",
 ]

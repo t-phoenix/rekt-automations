@@ -3,11 +3,15 @@ import json
 from typing import Dict, Any
 from langchain_core.prompts import ChatPromptTemplate
 
-from ..utils import get_llm
+from ..utils import get_llm_from_state
 from ..graph.state import GraphState, ContentAnalysis
 
 
-def analyze_topic_sentiment(input_text: str, is_twitter_post: bool) -> ContentAnalysis:
+def analyze_topic_sentiment(
+    input_text: str,
+    is_twitter_post: bool,
+    state: GraphState,
+) -> ContentAnalysis:
     """
     Analyze topic or Twitter post for emotion, humor, and meme-worthiness.
     
@@ -18,7 +22,7 @@ def analyze_topic_sentiment(input_text: str, is_twitter_post: bool) -> ContentAn
     Returns:
         ContentAnalysis with emotion, humor type, visual vibe, etc.
     """
-    llm = get_llm("analysis")
+    llm = get_llm_from_state(state, "analysis")
     
     # Different prompts based on input type
     if is_twitter_post:
@@ -106,7 +110,7 @@ def sentiment_analysis_node(state: GraphState) -> GraphState:
     print(f"📄 Input: {input_text[:100]}{'...' if len(input_text) > 100 else ''}")
     print("🔍 Analyzing sentiment...")
     
-    analysis = analyze_topic_sentiment(input_text, is_twitter_post)
+    analysis = analyze_topic_sentiment(input_text, is_twitter_post, state)
     
     print(f"✓ Dominant Emotion: {analysis['dominant_emotion']}")
     print(f"✓ Humor Type: {analysis['humor_type']}")
