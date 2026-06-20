@@ -35,18 +35,19 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Configure CORS
+# x402 paywall must register BEFORE CORS so CORS wraps all responses (including 402).
+# If CORS is inner, x402 short-circuit 402 responses skip Access-Control-Allow-Origin.
+setup_x402_middleware(app)
+
+# Configure CORS (outermost — must be added last)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["PAYMENT-REQUIRED", "PAYMENT-RESPONSE"],
+    expose_headers=["PAYMENT-REQUIRED", "PAYMENT-RESPONSE", "X-PAYMENT-RESPONSE"],
 )
-
-# x402 paywall (optional; skipped for valid admin credentials)
-setup_x402_middleware(app)
 
 # Include routers
 app.include_router(meme_router)

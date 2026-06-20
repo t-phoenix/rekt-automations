@@ -31,20 +31,33 @@ You need **at least one LLM provider key**. For the best cost/quality balance, s
 2. Sign in with your Google account
 3. Click **Create API key**
 4. Choose an existing Google Cloud project or create a new one
-5. Copy the key — it starts with `AIza...`
+5. Copy the key — new keys start with **`AQ.`** (Auth key). Older keys start with **`AIza`** (Standard key).
 6. Add to `.env`:
 
    ```bash
-   GOOGLE_API_KEY=AIzaSy...
+   GOOGLE_API_KEY=AQ.Ab8...   # or AIzaSy... for legacy keys
    DEFAULT_LLM=gemini-flash
    DEFAULT_VISION_LLM=gemini-flash
    ```
 
-### Notes
+### Key formats (both valid from AI Studio)
 
-- Gemini 2.5 Flash is the recommended default: low cost, fast, supports vision for template image analysis
-- Free tier available with rate limits; check [Google AI pricing](https://ai.google.dev/pricing)
-- Enable billing in Google Cloud if you exceed free tier limits
+| Prefix | Type | Notes |
+|--------|------|-------|
+| `AQ.` | **Auth key** (new default) | Created automatically in AI Studio since ~2026. Recommended by Google. |
+| `AIza` | **Standard key** (legacy) | Still works if restricted to Gemini API. Being phased out by Sep 2026. |
+
+Both work with meme-api via the native Gemini API. **Do not confuse `AQ.` AI Studio auth keys with Vertex AI** — if the key came from [aistudio.google.com/apikey](https://aistudio.google.com/apikey), it is correct regardless of prefix.
+
+### Troubleshooting Google keys
+
+| Error | Likely cause | Fix |
+|-------|--------------|-----|
+| `API key expired` / `API_KEY_INVALID` | Key revoked, blocked, or old value still loaded | Create a new key in AI Studio; **restart the API server** after updating `.env` |
+| `Blocked` label in AI Studio | Dormant unrestricted key | Restrict key to "Gemini API only" or create a new Auth key |
+| Works in curl but not app | Server not restarted after `.env` change | Restart `python app.py` / redeploy Render |
+
+Run `python scripts/test_llm_providers.py` after any key change.
 
 ---
 
